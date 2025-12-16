@@ -1,0 +1,148 @@
+{
+  "questions": [
+    {
+      "id": "q1",
+      "title": "Fundamentos de rendimiento",
+      "instruction": "Arrastra cada palabra al espacio correcto.",
+      "sentence": "El análisis de los [z1] ayuda a mejorar el [z2] y evitar [z3].",
+      "items": [
+        { "id": "w1", "text": "tiempos", "correctZoneId": "z1" },
+        { "id": "w2", "text": "rendimiento", "correctZoneId": "z2" },
+        { "id": "w3", "text": "retrasos", "correctZoneId": "z3" },
+
+        { "id": "t1", "text": "costos", "correctZoneId": null },
+        { "id": "t2", "text": "productividad", "correctZoneId": null }
+      ],
+      "zones": [
+        { "id": "z1", "label": "Primer espacio" },
+        { "id": "z2", "label": "Segundo espacio" },
+        { "id": "z3", "label": "Tercer espacio" }
+      ]
+    },
+
+    {
+      "id": "q2",
+      "title": "Trabajo en equipo",
+      "instruction": "Completa correctamente la frase.",
+      "sentence": "Una buena comunicación evita [z1] y mejora el [z2] [z3].",
+      "items": [
+        { "id": "w4", "text": "conflictos", "correctZoneId": "z1" },
+        { "id": "w5", "text": "trabajo", "correctZoneId": "z2" },
+        { "id": "w6", "text": "colaborativo", "correctZoneId": "z3" },
+
+        { "id": "t3", "text": "individual", "correctZoneId": null },
+        { "id": "t4", "text": "remoto", "correctZoneId": null }
+      ],
+      "zones": [
+        { "id": "z1", "label": "Primer espacio" },
+        { "id": "z2", "label": "Segundo espacio" },
+        { "id": "z3", "label": "Tercer espacio" }
+      ]
+    },
+
+    {
+      "id": "q3",
+      "title": "JavaScript básico",
+      "instruction": "Arrastra las palabras correctas.",
+      "sentence": "En JavaScript, una variable declarada con [z1] tiene alcance de [z2].",
+      "items": [
+        { "id": "w7", "text": "let", "correctZoneId": "z1" },
+        { "id": "w8", "text": "bloque", "correctZoneId": "z2" },
+
+        { "id": "t5", "text": "var", "correctZoneId": null },
+        { "id": "t6", "text": "global", "correctZoneId": null },
+        { "id": "t7", "text": "función", "correctZoneId": null }
+      ],
+      "zones": [
+        { "id": "z1", "label": "Declaración" },
+        { "id": "z2", "label": "Ámbito" }
+      ]
+    },
+
+    {
+      "id": "q4",
+      "title": "Closures en JavaScript",
+      "instruction": "Completa la explicación.",
+      "sentence": "Un [z1] permite que una función recuerde el [z2] donde fue creada.",
+      "items": [
+        { "id": "w9", "text": "closure", "correctZoneId": "z1" },
+        { "id": "w10", "text": "contexto", "correctZoneId": "z2" },
+
+        { "id": "t8", "text": "callback", "correctZoneId": null },
+        { "id": "t9", "text": "scope global", "correctZoneId": null }
+      ],
+      "zones": [
+        { "id": "z1", "label": "Concepto" },
+        { "id": "z2", "label": "Alcance" }
+      ]
+    },
+
+    {
+      "id": "q5",
+      "title": "Promesas en JavaScript",
+      "instruction": "Completa correctamente.",
+      "sentence": "Una promesa puede estar en estado [z1], [z2] o [z3].",
+      "items": [
+        { "id": "w11", "text": "pending", "correctZoneId": "z1" },
+        { "id": "w12", "text": "fulfilled", "correctZoneId": "z2" },
+        { "id": "w13", "text": "rejected", "correctZoneId": "z3" },
+
+        { "id": "t10", "text": "resolved", "correctZoneId": null },
+        { "id": "t11", "text": "waiting", "correctZoneId": null }
+      ],
+      "zones": [
+        { "id": "z1", "label": "Estado 1" },
+        { "id": "z2", "label": "Estado 2" },
+        { "id": "z3", "label": "Estado 3" }
+      ]
+    },
+
+    {
+      "id": "q6",
+      "title": "Git básico",
+      "instruction": "Completa la frase.",
+      "sentence": "El comando [z1] se utiliza para guardar cambios en el historial de Git.",
+      "items": [
+        { "id": "w14", "text": "git commit", "correctZoneId": "z1" },
+
+        { "id": "t12", "text": "git push", "correctZoneId": null },
+        { "id": "t13", "text": "git add", "correctZoneId": null }
+      ],
+      "zones": [
+        { "id": "z1", "label": "Comando" }
+      ]
+    },
+
+    {
+      "id": "q7",
+      "title": "Git intermedio",
+      "instruction": "Arrastra la opción correcta.",
+      "sentence": "El comando [z1] permite subir cambios al repositorio remoto.",
+      "items": [
+        { "id": "w15", "text": "git push", "correctZoneId": "z1" },
+
+        { "id": "t14", "text": "git pull", "correctZoneId": null },
+        { "id": "t15", "text": "git fetch", "correctZoneId": null }
+      ],
+      "zones": [
+        { "id": "z1", "label": "Comando Git" }
+      ]
+    },
+
+    {
+      "id": "q8",
+      "title": "Git avanzado",
+      "instruction": "Completa correctamente.",
+      "sentence": "El comando [z1] permite aplicar un commit específico sin fusionar ramas.",
+      "items": [
+        { "id": "w16", "text": "git cherry-pick", "correctZoneId": "z1" },
+
+        { "id": "t16", "text": "git merge", "correctZoneId": null },
+        { "id": "t17", "text": "git rebase", "correctZoneId": null }
+      ],
+      "zones": [
+        { "id": "z1", "label": "Comando avanzado" }
+      ]
+    }
+  ]
+}
