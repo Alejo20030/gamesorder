@@ -44,7 +44,7 @@ export default function App() {
     );
   }
 
-  /* ================= RESULTADO FINAL ================= */
+  // pantalla de resultado
   if (showResult && !showAnswers) {
     let score = 0;
 
@@ -99,7 +99,7 @@ export default function App() {
     );
   }
 
-  /* ================= VER RESPUESTAS ================= */
+  // pantalla de respuestas
   if (showAnswers) {
     return (
       <div style={{ padding: "40px", maxWidth: "900px", margin: "0 auto" }}>

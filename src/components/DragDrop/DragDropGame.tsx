@@ -29,7 +29,7 @@ export default function DragDropGame({ config, onFinish }: Props) {
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
-  /* ⏱ Temporizador */
+  
   useEffect(() => {
     if (finished) return;
 
@@ -45,7 +45,7 @@ export default function DragDropGame({ config, onFinish }: Props) {
     return () => clearTimeout(timer);
   }, [timeLeft, finished]);
 
-  /* 🎯 Drag final */
+  
   const handleDragEnd = (event: DragEndEvent) => {
     if (finished) return;
 
@@ -75,7 +75,7 @@ export default function DragDropGame({ config, onFinish }: Props) {
     });
   };
 
-  /* ▶ Enviar respuestas */
+  
   const handleNext = () => {
     const answers: Record<string, string> = {};
 
@@ -88,7 +88,7 @@ export default function DragDropGame({ config, onFinish }: Props) {
     onFinish(answers);
   };
 
-  /* 🧩 Frase con zonas */
+ 
   const renderSentence = () => {
     return config.sentence.split(/(\[z\d+\])/g).map((part, index) => {
       const match = part.match(/\[(z\d+)\]/);
@@ -158,7 +158,6 @@ export default function DragDropGame({ config, onFinish }: Props) {
           })}
         </div>
 
-        {/* ▶ BOTÓN SIGUIENTE */}
         {finished && (
           <div style={{ textAlign: "center", marginTop: "30px" }}>
             <button
