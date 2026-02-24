@@ -1,182 +1,143 @@
 import { useEffect, useState } from "react";
 import DragDropGame from "./components/DragDrop/DragDropGame";
-import { DragAndDropConfig } from "./interfaces/drag-and-drop-config.interface";
+import type { DragAndDropConfig } from "./interfaces/drag-and-drop-config.interface";
 import "./index.css";
 
+export interface Explanation {
+  _id: string;
+  explanationText: string;
+  questionId: string;
+  createdBy: string | null;
+  status: string;
+  createdAt: Date;
+  updatedAt: string;
+}
+
+export interface Question {
+  _id: string;
+  questionText: string;
+  explanations: Explanation[];
+  
+}
+
 export default function App() {
-  const [questions, setQuestions] = useState<DragAndDropConfig[]>([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showResult, setShowResult] = useState(false);
-  const [showAnswers, setShowAnswers] = useState(false);
+
+  const [gameData, setGameData] = useState<any>(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [currentConfig, setCurrentConfig] = useState<DragAndDropConfig | null>(null);
+  
+ 
 
   useEffect(() => {
-    async function loadGame() {
-      try {
-        const data = await import("./game.config.json");
-        setQuestions(data.default.questions);
-      } catch (err) {
-        console.error("Error cargando configuración:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
+    const handleMessage = (
+      event: MessageEvent<{
+        currentQuestion: Question;
+        otherQuestions: Question[];
+      }>,
+    ) => {
+      console.log("Mensaje recibido del host:", event.data);
+      console.log("Origen del mensaje:");
 
-    loadGame();
+      if (event.data?.type ==="TIME_UPDATE") {
+        setTimeLeft(event.data.payload.timeLeft);
+        
+        return;
+      }
+
+        
+
+
+      
+      const { currentQuestion } = event.data;
+
+      if (!currentQuestion) return;
+
+      setGameData({
+        timeLimit: 300,
+        userId: "user123",
+        courseId: "course456",
+        attempt: 1,
+      });
+      
+
+     
+        const zones = currentQuestion.explanations.map((_, index) => ({
+          id: `z${index + 1}`,
+          label: "",
+        }));
+
+        const items = currentQuestion.explanations.map((e, index) => ({
+          id: e._id,
+          text: e.explanationText,
+          correctZoneId: zones[index].id,
+        }));
+
+        const normalized: DragAndDropConfig = {
+          sentence: currentQuestion.questionText,
+          zones,
+          items,
+        };
+
+        const placeholders = zones.map((z) => `[${z.id}]`).join(" _____ ");
+        const sentence = `${placeholders}`;
+
+       
+
+        setCurrentConfig(normalized);
+
+      
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
   }, []);
 
   const handleNext = (userAnswers: Record<string, string>) => {
-    setAnswers(prev => [...prev, userAnswers]);
+    
 
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-    } else {
-      setShowResult(true);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div style={{ textAlign: "center", marginTop: 40 }}>
-        Cargando juego…
-      </div>
+    window.parent.postMessage(
+      {
+        type: "QUESTION_ANSWERED",
+        payload: {
+          answers: userAnswers,
+          
+        },
+      },
+      "*",
     );
-  }
 
-  // pantalla de resultado
-  if (showResult && !showAnswers) {
-    let score = 0;
-
-    answers.forEach((ans, index) => {
-      const question = questions[index];
-
-      const allZonescorrect = question.zones.every(zone => {
-        const userItemId = ans[zone.id];
-
-
-        const correctItem = question.items.find(
-          item => item.id === userItemId && item.correctZoneId === zone.id
-        );
-
-        return !!correctItem;
-      }
-        
-      );
-
-      if (allZonescorrect) score++;
-    });
-
-    const percentage = Math.round((score / questions.length) * 100);
-
+    
+  };
+  if (!gameData || !currentConfig) {
     return (
       <div style={{ textAlign: "center", marginTop: 80 }}>
-        <h2>Resultado final</h2>
-
-        <p>
-          Respuestas correctas: <b>{score}</b> de{" "}
-          <b>{questions.length}</b>
-        </p>
-
-        <h3>Calificación: {percentage}%</h3>
-
-        <button
-          onClick={() => setShowAnswers(true)}
-          style={{
-            marginTop: "30px",
-            padding: "10px 26px",
-            fontSize: "16px",
-            borderRadius: "8px",
-            border: "none",
-            background: "#4f46e5",
-            color: "white",
-            cursor: "pointer",
-          }}
-        >
-          Ver respuestas correctas
-        </button>
+        <h2>Esperando datos del host...</h2>
       </div>
     );
   }
-
-  // pantalla de respuestas
-  if (showAnswers) {
-    return (
-      <div style={{ padding: "40px", maxWidth: "900px", margin: "0 auto" }}>
-        <h2 style={{ textAlign: "center", marginBottom: "40px" }}>
-          Corrección del ejercicio
-        </h2>
-
-        {questions.map((q, index) => {
-          const userAnswer = answers[index];
-
-          return (
-            <div
-              key={q.id}
-              style={{
-                background: "#fff",
-                padding: "20px",
-                borderRadius: "12px",
-                marginBottom: "30px",
-                boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
-              }}
-            >
-              <h3>{q.title}</h3>
-              <p style={{ marginBottom: "16px" }}>{q.sentence}</p>
-
-              {q.items.map(item => {
-                const userItemId = userAnswer[item.correctZoneId];
-                const userItem = q.items.find(i => i.id === userItemId);
-
-                return (
-                  <p key={item.id}>
-                    <b>{item.correctZoneId}:</b>{" "}
-                    {userItem?.text ?? "—"}{" "}
-                    {userItemId === item.id
-                      ? "✅"
-                      : `❌ (Correcta: ${item.text})`}
-                  </p>
-                );
-              })}
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
   
-  return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#f5f6fa",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: "40px",
-      }}
-    >
-      <div
-        style={{
-          background: "white",
-          padding: "40px",
-          borderRadius: "16px",
-          width: "100%",
-          maxWidth: "850px",
-          boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-        }}
-      >
-        <h2 style={{ textAlign: "center", marginBottom: "10px" }}>
-          Pregunta {currentIndex + 1} de {questions.length}
-        </h2>
+  
+  
 
-        <DragDropGame
-          key={currentIndex} 
-          config={questions[currentIndex]}
-          onFinish={handleNext}
-        />
+
+  return (
+    <div className="w-full h-screen bg-gray-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-6xl min-h-[85vh] bg-white rounded-2xl shadow-xl p-10 flex flex-col">
+        <h2 className="text-3xl font-bold text-center mb-2">
+          Completa la frase
+        </h2>
+        <p className="text-center text-gray-600 mb-6">
+          Arrastra cada palabra al espacio correcto para completar la frase.
+        </p>
+        <div className="flex-1 flex flex-col justify-center">
+          <DragDropGame
+            config={currentConfig}
+            onFinish={handleNext}
+            timeLeft={timeLeft}
+          />
+        </div>
       </div>
     </div>
+          
   );
 }
