@@ -65,12 +65,11 @@ export default function DragDropGame({ config, onFinish, timeLeft }: Props) {
   }
 
   useEffect(() => {
-    if (finished) return;
       const allZonesFilled = config.zones.every(
         (zone) => placedItems[zone.id].length === 1
       );
 
-      if (allZonesFilled) {
+      if (!finished && allZonesFilled) {
         setFinished(true);
 
         const answers: Record<string, string> = {};
@@ -78,10 +77,10 @@ export default function DragDropGame({ config, onFinish, timeLeft }: Props) {
           answers[zone.id] = placedItems[zone.id][0];
         });
 
-        
+        setFinished(true);
         onFinish(answers);
       }
-  }, [placedItems]);
+  }, [placedItems, config, finished]);
 
       
   

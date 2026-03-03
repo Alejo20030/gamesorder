@@ -17,16 +17,14 @@ export interface Question {
   _id: string;
   questionText: string;
   explanations: Explanation[];
-  
 }
 
 export default function App() {
-
   const [gameData, setGameData] = useState<any>(null);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [currentConfig, setCurrentConfig] = useState<DragAndDropConfig | null>(null);
-  
- 
+  const [timeLeft, setTimeLeft] = useState(300);
+  const [currentConfig, setCurrentConfig] = useState<DragAndDropConfig | null>(
+    null,
+  );
 
   useEffect(() => {
     const handleMessage = (
@@ -38,16 +36,8 @@ export default function App() {
       console.log("Mensaje recibido del host:", event.data);
       console.log("Origen del mensaje:");
 
-      if (event.data?.type ==="TIME_UPDATE") {
-        setTimeLeft(event.data.payload.timeLeft);
-        
-        return;
-      }
-
-        
-
-
       
+
       const { currentQuestion } = event.data;
 
       if (!currentQuestion) return;
@@ -57,35 +47,30 @@ export default function App() {
         userId: "user123",
         courseId: "course456",
         attempt: 1,
+        currentQuestionId: currentQuestion._id,
       });
-      
 
-     
-        const zones = currentQuestion.explanations.map((_, index) => ({
-          id: `z${index + 1}`,
-          label: "",
-        }));
+      const zones = currentQuestion.explanations.map((_, index) => ({
+        id: `z${index + 1}`,
+        label: "",
+      }));
 
-        const items = currentQuestion.explanations.map((e, index) => ({
-          id: e._id,
-          text: e.explanationText,
-          correctZoneId: zones[index].id,
-        }));
+      const items = currentQuestion.explanations.map((e, index) => ({
+        id: e._id,
+        text: e.explanationText,
+        correctZoneId: zones[index].id,
+      }));
 
-        const normalized: DragAndDropConfig = {
-          sentence: currentQuestion.questionText,
-          zones,
-          items,
-        };
+      const normalized: DragAndDropConfig = {
+        sentence: currentQuestion.questionText,
+        zones,
+        items,
+      };
 
-        const placeholders = zones.map((z) => `[${z.id}]`).join(" _____ ");
-        const sentence = `${placeholders}`;
+      const placeholders = zones.map((z) => `[${z.id}]`).join(" _____ ");
+      const sentence = `${placeholders}`;
 
-       
-
-        setCurrentConfig(normalized);
-
-      
+      setCurrentConfig(normalized);
     };
 
     window.addEventListener("message", handleMessage);
@@ -93,21 +78,41 @@ export default function App() {
   }, []);
 
   const handleNext = (userAnswers: Record<string, string>) => {
-    
+    console.log("Handling next ejecutado");
+    if (!currentConfig || !gameData) return;
+
+    const isCorrect = currentConfig.items.every((item) => {
+      const selectedItemId = userAnswers[item.correctZoneId];
+      return selectedItemId === item.id;
+    });
 
     window.parent.postMessage(
       {
-        type: "QUESTION_ANSWERED",
-        payload: {
-          answers: userAnswers,
-          
-        },
+        answeredCorrectly: isCorrect,
+        questionId: gameData.currentQuestionId ?? "unknown",
+        questionText: currentConfig.sentence,
+        userAnswer: JSON.stringify(userAnswers),
       },
       "*",
     );
-
-    
   };
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+
+          handleNext({}); 
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [gameData?.currentQuestionId]);
+
   if (!gameData || !currentConfig) {
     return (
       <div style={{ textAlign: "center", marginTop: 80 }}>
@@ -115,10 +120,6 @@ export default function App() {
       </div>
     );
   }
-  
-  
-  
-
 
   return (
     <div className="w-full h-screen bg-gray-100 flex items-center justify-center p-4">
@@ -129,6 +130,7 @@ export default function App() {
         <p className="text-center text-gray-600 mb-6">
           Arrastra cada palabra al espacio correcto para completar la frase.
         </p>
+        
         <div className="flex-1 flex flex-col justify-center">
           <DragDropGame
             config={currentConfig}
@@ -138,6 +140,5 @@ export default function App() {
         </div>
       </div>
     </div>
-          
   );
 }
