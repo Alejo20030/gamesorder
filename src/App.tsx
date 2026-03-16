@@ -26,6 +26,10 @@ export default function App() {
     null,
   );
 
+  function shuffleArray<T>(array: T[]): T[] {
+          return [...array].sort(() => Math.random() - 0.5);
+        }
+
   useEffect(() => {
     const handleMessage = (
       event: MessageEvent<{
@@ -49,27 +53,29 @@ export default function App() {
         attempt: 1,
         currentQuestionId: currentQuestion._id,
       });
+      
+      
 
       const zones = currentQuestion.explanations.map((_, index) => ({
         id: `z${index + 1}`,
         label: "",
       }));
 
-      const items = currentQuestion.explanations.map((e, index) => ({
+      const shuffled = shuffleArray(currentQuestion.explanations);
+      const items = shuffled.map((e, index) => ({
         id: e._id,
         text: e.explanationText,
         correctZoneId: zones[index].id,
       }));
 
       const normalized: DragAndDropConfig = {
-        sentence: currentQuestion.questionText,
+        sentence: currentQuestion.questionText + "\n\n" + 
+        zones.map((z) => `[${z.id}]`).join(" ______ "),
         zones,
         items,
       };
 
-      const placeholders = zones.map((z) => `[${z.id}]`).join(" _____ ");
-      const sentence = `${placeholders}`;
-
+      
       setCurrentConfig(normalized);
     };
 

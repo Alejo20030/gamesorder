@@ -5,6 +5,7 @@ import {
   useSensor,
   useSensors,
   PointerSensor,
+  TouchSensor
 } from "@dnd-kit/core";
 
 import DragItemCard from "./DragItemCard";
@@ -25,8 +26,13 @@ export default function DragDropGame({ config, onFinish, timeLeft }: Props) {
   const [finished, setFinished] = useState(false);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { 
+      activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { distance: 5 }
+    })
   );
+
 
   
   useEffect(() => {
@@ -112,7 +118,7 @@ export default function DragDropGame({ config, onFinish, timeLeft }: Props) {
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div style={{ padding: "20px", maxWidth: "800px", margin: "0 auto" }}>
+      <div className="p-5 max-w-[800px] mx-auto touch-none">
         <p style={{ textAlign: "center", marginBottom: "10px" }}>
           ⏱ Tiempo restante: <b>{timeLeft}s</b>
         </p>
