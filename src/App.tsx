@@ -30,6 +30,8 @@ export default function App() {
           return [...array].sort(() => Math.random() - 0.5);
         }
 
+  
+
   useEffect(() => {
     const handleMessage = (
       event: MessageEvent<{
@@ -55,22 +57,70 @@ export default function App() {
       });
       
       
+      function cleantext(text: string) {
+        return text.replace(/p\d+/gi, "").trim();
+      }
 
-      const zones = currentQuestion.explanations.map((_, index) => ({
+      function getKeywords(text: string, max: number = 2): string[] {
+        const cleaned = cleantext(text);
+
+        const stopWords = ["para", "como", "este", "esta", "porque", "donde",
+          "quien", "que", "cual", "cuando", "cuanto",
+          "con", "sin", "sobre", "entre", "hasta", "desde",
+          "siempre", "tambien", "puede", "debe", "hacer",
+          "tener", "usar", "mejorar", "analizar","tiempos"];
+        const words = cleaned
+          .toLowerCase()
+          .split(" ")
+          .map((w) => w.replace(/[.,]/g, ""))
+          .filter((w) => w.length > 5 && !stopWords.includes(w));
+
+          const unique = Array.from(new Set(words));
+          return unique.slice(0, max);
+      }
+
+      function createSentenceWithBlanks(base: string, keywords: string[]) {
+        let sentence = base;
+
+        keywords.forEach((word, index) => {
+          const regex = new RegExp(word, "i");
+          sentence = sentence.replace(regex, `[z${index + 1}]`);
+        });
+
+        return sentence;
+      }
+
+      const correctExplanation = currentQuestion.explanations[0];
+      const cleanedExplanation = cleantext(correctExplanation.explanationText);
+      const keywords = getKeywords(cleanedExplanation);
+      const sentence = createSentenceWithBlanks(
+        cleanedExplanation,
+         keywords);
+
+      const zones = keywords.map((_, index) => ({
         id: `z${index + 1}`,
-        label: "",
+        label: ""
       }));
 
-      const shuffled = shuffleArray(currentQuestion.explanations);
-      const items = shuffled.map((e, index) => ({
-        id: e._id,
-        text: e.explanationText,
-        correctZoneId: zones[index].id,
+      const correctItems = keywords.map((word, index) => ({
+        id: `correct-${index}`,
+        text: word,
+        correctZoneId: `z${index + 1}`,
       }));
+
+      const distractors= currentQuestion.explanations
+        .slice(1)
+        .flatMap((e) => getKeywords(e.explanationText, 1))
+        .map((word, index) => ({
+          id: `wrong-${index}`,
+          text: word,
+          correctZoneId: "wrong",
+        }));
+
+      const items = shuffleArray([...correctItems, ...distractors]); 
 
       const normalized: DragAndDropConfig = {
-        sentence: currentQuestion.questionText + "\n\n" + 
-        zones.map((z) => `[${z.id}]`).join(" ______ "),
+        sentence,
         zones,
         items,
       };
@@ -87,7 +137,9 @@ export default function App() {
     console.log("Handling next ejecutado");
     if (!currentConfig || !gameData) return;
 
-    const isCorrect = currentConfig.items.every((item) => {
+    const isCorrect = currentConfig.items
+    .filter((item) => item.correctZoneId !== "wrong")
+    .every((item) => {
       const selectedItemId = userAnswers[item.correctZoneId];
       return selectedItemId === item.id;
     });
