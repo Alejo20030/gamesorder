@@ -17,21 +17,27 @@ export default function DropZoneCard({ id, items }: Props) {
     <span
       ref={setNodeRef}
       className={`
-        inline-block
-        min-w-[110px]
-        px-2 py-1
+        inline-flex
+        items-center
+        justify-center
+        min-w-[120px]
+        min-h-[40px]
+        px-3 py-1
         text-center
         font-semibold
-        border-b-2
-        rounded-md
+        rounded-lg
+        border-none
         transition-all
         duration-200
 
-        ${word ? "border-indigo-500 text-indigo-700" : "border-gray-400 text-gray-600"}
-        ${isOver ? "bg-indigo-100 shadow-sm scale-[1.03]" : ""}
+        ${word 
+          ? "border-indigo-500 text-indigo-700 bg-indigo-50" 
+          : "border-dashed border-gray-400 text-gray-400 bg-gray-50"}
+          
+        ${isOver ? "bg-indigo-100 scale-105 shadow-md" : ""}
       `}
     >
-      {word ?? ""}
+      {word ?? "______"}
     </span>
   );
 }
