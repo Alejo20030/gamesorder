@@ -27,10 +27,8 @@ export default function App() {
   );
 
   function shuffleArray<T>(array: T[]): T[] {
-          return [...array].sort(() => Math.random() - 0.5);
-        }
-
-  
+    return [...array].sort(() => Math.random() - 0.5);
+  }
 
   useEffect(() => {
     const handleMessage = (
@@ -40,9 +38,6 @@ export default function App() {
       }>,
     ) => {
       console.log("Mensaje recibido del host:", event.data);
-      console.log("Origen del mensaje:");
-
-      
 
       const { currentQuestion } = event.data;
 
@@ -50,13 +45,10 @@ export default function App() {
 
       setGameData({
         timeLimit: 300,
-        userId: "user123",
-        courseId: "course456",
         attempt: 1,
         currentQuestionId: currentQuestion._id,
       });
-      
-      
+
       function cleantext(text: string) {
         return text.replace(/p\d+/gi, "").trim();
       }
@@ -64,19 +56,43 @@ export default function App() {
       function getKeywords(text: string, max: number = 2): string[] {
         const cleaned = cleantext(text);
 
-        const stopWords = ["para", "como", "este", "esta", "porque", "donde",
-          "quien", "que", "cual", "cuando", "cuanto",
-          "con", "sin", "sobre", "entre", "hasta", "desde",
-          "siempre", "tambien", "puede", "debe", "hacer",
-          "tener", "usar", "mejorar", "analizar","tiempos"];
+        const stopWords = [
+          "para",
+          "como",
+          "este",
+          "esta",
+          "porque",
+          "donde",
+          "quien",
+          "que",
+          "cual",
+          "cuando",
+          "cuanto",
+          "con",
+          "sin",
+          "sobre",
+          "entre",
+          "hasta",
+          "desde",
+          "siempre",
+          "tambien",
+          "puede",
+          "debe",
+          "hacer",
+          "tener",
+          "usar",
+          "mejorar",
+          "analizar",
+          "tiempos",
+        ];
         const words = cleaned
           .toLowerCase()
           .split(" ")
           .map((w) => w.replace(/[.,]/g, ""))
           .filter((w) => w.length > 5 && !stopWords.includes(w));
 
-          const unique = Array.from(new Set(words));
-          return unique.slice(0, max);
+        const unique = Array.from(new Set(words));
+        return unique.slice(0, max);
       }
 
       function createSentenceWithBlanks(base: string, keywords: string[]) {
@@ -93,13 +109,11 @@ export default function App() {
       const correctExplanation = currentQuestion.explanations[0];
       const cleanedExplanation = cleantext(correctExplanation.explanationText);
       const keywords = getKeywords(cleanedExplanation);
-      const sentence = createSentenceWithBlanks(
-        cleanedExplanation,
-         keywords);
+      const sentence = createSentenceWithBlanks(cleanedExplanation, keywords);
 
       const zones = keywords.map((_, index) => ({
         id: `z${index + 1}`,
-        label: ""
+        label: "",
       }));
 
       const correctItems = keywords.map((word, index) => ({
@@ -108,7 +122,7 @@ export default function App() {
         correctZoneId: `z${index + 1}`,
       }));
 
-      const distractors= currentQuestion.explanations
+      const distractors = currentQuestion.explanations
         .slice(1)
         .flatMap((e) => getKeywords(e.explanationText, 1))
         .map((word, index) => ({
@@ -117,7 +131,7 @@ export default function App() {
           correctZoneId: "wrong",
         }));
 
-      const items = shuffleArray([...correctItems, ...distractors]); 
+      const items = shuffleArray([...correctItems, ...distractors]);
 
       const normalized: DragAndDropConfig = {
         sentence,
@@ -125,7 +139,6 @@ export default function App() {
         items,
       };
 
-      
       setCurrentConfig(normalized);
     };
 
@@ -134,15 +147,14 @@ export default function App() {
   }, []);
 
   const handleNext = (userAnswers: Record<string, string>) => {
-    console.log("Handling next ejecutado");
     if (!currentConfig || !gameData) return;
 
     const isCorrect = currentConfig.items
-    .filter((item) => item.correctZoneId !== "wrong")
-    .every((item) => {
-      const selectedItemId = userAnswers[item.correctZoneId];
-      return selectedItemId === item.id;
-    });
+      .filter((item) => item.correctZoneId !== "wrong")
+      .every((item) => {
+        const selectedItemId = userAnswers[item.correctZoneId];
+        return selectedItemId === item.id;
+      });
 
     window.parent.postMessage(
       {
@@ -161,7 +173,7 @@ export default function App() {
         if (prev <= 1) {
           clearInterval(timer);
 
-          handleNext({}); 
+          handleNext({});
           return 0;
         }
         return prev - 1;
@@ -188,7 +200,7 @@ export default function App() {
         <p className="text-center text-gray-600 mb-6">
           Arrastra cada palabra al espacio correcto para completar la frase.
         </p>
-        
+
         <div className="flex-1 flex flex-col justify-center">
           <DragDropGame
             config={currentConfig}
