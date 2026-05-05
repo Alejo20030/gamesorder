@@ -130,7 +130,16 @@ export default function App() {
     };
 
     window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
+
+    const readyTimer = setTimeout(() => {
+      console.log("Enviando mensaje de GAME_READY al host");
+      window.parent.postMessage({ type: "GAME_READY" }, "*");      
+    }, 200);
+
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      clearTimeout(readyTimer);
+    };
   }, []);
 
   const handleNext = (userAnswers: Record<string, string>) => {
