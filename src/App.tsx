@@ -50,7 +50,7 @@ export default function App() {
       });
 
       function cleantext(text: string) {
-        return text.replace(/p\d+/gi, "").trim();
+        return text.trim();
       }
 
       function getKeywords(text: string, max: number = 2): string[] {
