@@ -146,7 +146,7 @@ export default function App() {
 
     const readyTimer = setTimeout(() => {
       console.log("Enviando mensaje de GAME_READY al host");
-      window.parent.postMessage({ type: "GAME_READY" }, "*");      
+      window.parent.postMessage({ type: "GAME_READY" }, "*");
     }, 200);
 
     return () => {
