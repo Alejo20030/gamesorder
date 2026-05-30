@@ -33,72 +33,75 @@ function cleantext(text: string) {
   return text.trim();
 }
 
+function tokenize(text: string): string[] {
+  return text
+    .split(/\s+/)
+    .map((w) => w.replace(/[.,!?;:"'()]/g, "").toLowerCase())
+    .filter((w) => w.length > 0);
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function getKeywords(text: unknown, max: number = 2): string[] {
   if (typeof text !== "string") return [];
   const cleaned = cleantext(text);
   if (!cleaned) return [];
 
-  const stopWords = [
-    "para",
-    "como",
-    "este",
-    "esta",
-    "porque",
-    "donde",
-    "quien",
-    "que",
-    "cual",
-    "cuando",
-    "cuanto",
-    "con",
-    "sin",
-    "sobre",
-    "entre",
-    "hasta",
-    "desde",
-    "siempre",
-    "tambien",
-    "puede",
-    "debe",
-    "hacer",
-    "tener",
-    "usar",
-    "mejorar",
-    "analizar",
-    "tiempos",
-  ];
-  const words = cleaned
-    .split(/\s+/)
-    .map((w) => w?.replace(/[.,]/g, "").toLowerCase())
-    .filter(
-      (w): w is string =>
-        typeof w === "string" && w.length > 3 && !stopWords.includes(w),
-    );
-
-  const unique = Array.from(new Set(words));
-  return shuffleArray(unique).slice(0, max);
+  const uniqueTokens = Array.from(new Set(tokenize(cleaned)));
+  return shuffleArray(uniqueTokens).slice(0, Math.min(max, uniqueTokens.length));
 }
 
 function createSentenceWithBlanks(base: string, keywords: string[]) {
   let sentence = base;
 
-  keywords.forEach((word, index) => {
-    const regex = new RegExp(word, "i");
-    sentence = sentence.replace(regex, `[z${index + 1}]`);
-  });
+  keywords
+    .map((word, index) => ({ word, zoneIndex: index + 1 }))
+    .sort((a, b) => b.word.length - a.word.length)
+    .forEach(({ word, zoneIndex }) => {
+      const regex = new RegExp(`\\b${escapeRegExp(word)}\\b`, "i");
+      sentence = sentence.replace(regex, `[z${zoneIndex}]`);
+    });
 
   return sentence;
 }
 
-function buildConfig(question: Question): DragAndDropConfig | null {
-  const correctExplanation = question.explanations?.[0];
-  if (!correctExplanation?.explanationText) return null;
+type BuildConfigResult =
+  | { ok: true; config: DragAndDropConfig }
+  | { ok: false; reason: string };
 
-  const cleanedExplanation = cleantext(correctExplanation.explanationText);
-  const keywords = getKeywords(cleanedExplanation);
-  if (keywords.length === 0) return null;
+function buildConfig(question: Question): BuildConfigResult {
+  const explanations =
+    question.explanations?.filter((e) => e?.explanationText?.trim()) ?? [];
 
-  const sentence = createSentenceWithBlanks(cleanedExplanation, keywords);
+  if (explanations.length === 0) {
+    return { ok: false, reason: "La pregunta no tiene explicaciones válidas." };
+  }
+
+  let sentenceBase = cleantext(explanations[0].explanationText);
+  let keywords = getKeywords(sentenceBase);
+
+  if (keywords.length === 0) {
+    for (const explanation of explanations.slice(1)) {
+      const candidate = cleantext(explanation.explanationText);
+      const candidateKeywords = getKeywords(candidate, 2);
+      if (candidateKeywords.length > 0) {
+        sentenceBase = candidate;
+        keywords = candidateKeywords;
+        break;
+      }
+    }
+  }
+
+  if (keywords.length === 0) {
+    return {
+      ok: false,
+      reason: "No se pudieron extraer palabras de las explicaciones.",
+    };
+  }
+
+  const sentence = createSentenceWithBlanks(sentenceBase, keywords);
 
   const zones = keywords.map((_, index) => ({
     id: `z${index + 1}`,
@@ -134,9 +137,12 @@ function buildConfig(question: Question): DragAndDropConfig | null {
     }));
 
   return {
-    sentence,
-    zones,
-    items: shuffleArray([...correctItems, ...distractors]),
+    ok: true,
+    config: {
+      sentence,
+      zones,
+      items: shuffleArray([...correctItems, ...distractors]),
+    },
   };
 }
 
@@ -147,12 +153,31 @@ export default function App() {
   const [currentConfig, setCurrentConfig] = useState<DragAndDropConfig | null>(
     null,
   );
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  const notifyHostSkipped = useCallback(
+    (questionId: string, questionText: string, reason: string) => {
+      window.parent.postMessage(
+        {
+          answeredCorrectly: false,
+          questionId,
+          questionText,
+          userAnswer: JSON.stringify({ skipped: true, reason }),
+        },
+        "*",
+      );
+    },
+    [],
+  );
 
   const handleReloadWords = useCallback(() => {
     if (!currentQuestion) return;
-    const regeneratedConfig = buildConfig(currentQuestion);
-    if (regeneratedConfig) {
-      setCurrentConfig(regeneratedConfig);
+    const result = buildConfig(currentQuestion);
+    if (result.ok) {
+      setLoadError(null);
+      setCurrentConfig(result.config);
+    } else {
+      setLoadError(result.reason);
     }
   }, [currentQuestion]);
 
@@ -169,6 +194,8 @@ export default function App() {
 
       if (!currentQuestion) return;
       setCurrentQuestion(currentQuestion);
+      setTimeLeft(300);
+      setLoadError(null);
 
       setGameData({
         timeLimit: 300,
@@ -176,9 +203,14 @@ export default function App() {
         currentQuestionId: currentQuestion._id,
       });
 
-      const normalized = buildConfig(currentQuestion);
-      if (!normalized) return;
-      setCurrentConfig(normalized);
+      const result = buildConfig(currentQuestion);
+      if (!result.ok) {
+        setCurrentConfig(null);
+        setLoadError(result.reason);
+        return;
+      }
+
+      setCurrentConfig(result.config);
     };
 
     window.addEventListener("message", handleMessage);
@@ -231,10 +263,42 @@ export default function App() {
     return () => clearInterval(timer);
   }, [gameData?.currentQuestionId, handleNext]);
 
-  if (!gameData || !currentConfig) {
+  if (!gameData) {
     return (
       <div style={{ textAlign: "center", marginTop: 80 }}>
         <h2>Esperando datos del host...</h2>
+      </div>
+    );
+  }
+
+  if (!currentConfig) {
+    return (
+      <div style={{ textAlign: "center", marginTop: 80, padding: "0 24px" }}>
+        <h2>No se pudo cargar esta pregunta</h2>
+        <p style={{ color: "#666", marginTop: 12 }}>
+          {loadError ?? "No fue posible generar el juego con esta pregunta."}
+        </p>
+        <button
+          type="button"
+          style={{
+            marginTop: 24,
+            padding: "10px 20px",
+            borderRadius: 8,
+            border: "none",
+            background: "#2563eb",
+            color: "white",
+            cursor: "pointer",
+          }}
+          onClick={() =>
+            notifyHostSkipped(
+              gameData.currentQuestionId,
+              currentQuestion?.questionText ?? "unknown",
+              loadError ?? "unsupported question",
+            )
+          }
+        >
+          Continuar con la siguiente
+        </button>
       </div>
     );
   }
