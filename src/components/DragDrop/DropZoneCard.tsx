@@ -6,9 +6,10 @@ interface Props {
   id: string;
   zone: DropZone;
   items: DragItem[];
+  status?: "correct" | "incorrect";
 }
 
-export default function DropZoneCard({ id, items }: Props) {
+export default function DropZoneCard({ id, items, status }: Props) {
   const { setNodeRef, isOver } = useDroppable({ id });
 
   const word = items[0]?.text;
@@ -16,28 +17,20 @@ export default function DropZoneCard({ id, items }: Props) {
   return (
     <span
       ref={setNodeRef}
-      className={`
-        inline-flex
-        items-center
-        justify-center
-        min-w-[120px]
-        min-h-[40px]
-        px-3 py-1
-        text-center
-        font-semibold
-        rounded-lg
-        border-none
-        transition-all
-        duration-200
-
-        ${word 
-          ? "border-indigo-500 text-indigo-700 bg-indigo-50" 
-          : "border-dashed border-gray-400 text-gray-400 bg-gray-50"}
-          
-        ${isOver ? "bg-indigo-100 scale-105 shadow-md" : ""}
-      `}
+      className={`blank ${word ? "is-filled" : ""} ${isOver ? "is-over" : ""} ${
+        status ? `is-${status}` : ""
+      }`}
+      aria-label={
+        status === "correct"
+          ? `Correcto: ${word}`
+          : status === "incorrect"
+            ? `Incorrecto${word ? `: ${word}` : ""}`
+            : word
+              ? `Palabra colocada: ${word}`
+              : "Espacio vacío"
+      }
     >
-      {word ?? "______"}
+      {word ?? <span className="blank-hint">···</span>}
     </span>
   );
 }

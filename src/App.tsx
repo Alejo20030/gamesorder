@@ -1,23 +1,13 @@
-import { useCallback, useEffect, useState } from "react";
-import DragDropGame from "./components/DragDrop/DragDropGame";
+import { useCallback, useEffect, useRef, useState } from "react";
+import DragDropGame, {
+  type RoundResult,
+} from "./components/DragDrop/DragDropGame";
 import type { DragAndDropConfig } from "./interfaces/drag-and-drop-config.interface";
+import { buildConfig, type Question } from "./game/build-config";
+import { gradeAnswers, solvedSentence } from "./game/grade-answers";
 import "./index.css";
 
-export interface Explanation {
-  _id: string;
-  explanationText: string;
-  questionId: string;
-  createdBy: string | null;
-  status: string;
-  createdAt: Date;
-  updatedAt: string;
-}
-
-export interface Question {
-  _id: string;
-  questionText: string;
-  explanations: Explanation[];
-}
+const GAME_VERSION = "v1.2";
 
 interface GameData {
   timeLimit: number;
@@ -25,125 +15,50 @@ interface GameData {
   currentQuestionId: string;
 }
 
-function shuffleArray<T>(array: T[]): T[] {
-  return [...array].sort(() => Math.random() - 0.5);
-}
-
-function cleantext(text: string) {
-  return text.trim();
-}
-
-function tokenize(text: string): string[] {
-  return text
-    .split(/\s+/)
-    .map((w) => w.replace(/[.,!?;:"'()]/g, "").toLowerCase())
-    .filter((w) => w.length > 0);
-}
-
-function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function getKeywords(text: unknown, max: number = 2): string[] {
-  if (typeof text !== "string") return [];
-  const cleaned = cleantext(text);
-  if (!cleaned) return [];
-
-  const uniqueTokens = Array.from(new Set(tokenize(cleaned)));
-  return shuffleArray(uniqueTokens).slice(0, Math.min(max, uniqueTokens.length));
-}
-
-function createSentenceWithBlanks(base: string, keywords: string[]) {
-  let sentence = base;
-
-  keywords
-    .map((word, index) => ({ word, zoneIndex: index + 1 }))
-    .sort((a, b) => b.word.length - a.word.length)
-    .forEach(({ word, zoneIndex }) => {
-      const regex = new RegExp(`\\b${escapeRegExp(word)}\\b`, "i");
-      sentence = sentence.replace(regex, `[z${zoneIndex}]`);
-    });
-
-  return sentence;
-}
-
-type BuildConfigResult =
-  | { ok: true; config: DragAndDropConfig }
-  | { ok: false; reason: string };
-
-function buildConfig(question: Question): BuildConfigResult {
-  const explanations =
-    question.explanations?.filter((e) => e?.explanationText?.trim()) ?? [];
-
-  if (explanations.length === 0) {
-    return { ok: false, reason: "La pregunta no tiene explicaciones válidas." };
-  }
-
-  let sentenceBase = cleantext(explanations[0].explanationText);
-  let keywords = getKeywords(sentenceBase);
-
-  if (keywords.length === 0) {
-    for (const explanation of explanations.slice(1)) {
-      const candidate = cleantext(explanation.explanationText);
-      const candidateKeywords = getKeywords(candidate, 2);
-      if (candidateKeywords.length > 0) {
-        sentenceBase = candidate;
-        keywords = candidateKeywords;
-        break;
-      }
-    }
-  }
-
-  if (keywords.length === 0) {
-    return {
-      ok: false,
-      reason: "No se pudieron extraer palabras de las explicaciones.",
-    };
-  }
-
-  const sentence = createSentenceWithBlanks(sentenceBase, keywords);
-
-  const zones = keywords.map((_, index) => ({
-    id: `z${index + 1}`,
-    label: "",
-  }));
-
-  const timestamp = Date.now();
-  const correctItems = keywords.map((word, index) => ({
-    id: `correct-${index}-${timestamp}`,
-    text: word,
-    correctZoneId: `z${index + 1}`,
-  }));
-
-  const correctWordSet = new Set(correctItems.map((item) => item.text));
-  const maxOptions = keywords.length * 2;
-  const availableDistractorSlots = Math.max(0, maxOptions - correctItems.length);
-
-  const distractorCandidates = question.explanations
-    .slice(1)
-    .flatMap((e) => getKeywords(e?.explanationText, Math.max(2, keywords.length)))
-    .filter((word) => !correctWordSet.has(word));
-
-  const uniqueDistractorWords = Array.from(new Set(distractorCandidates));
-  const selectedDistractorWords = shuffleArray(uniqueDistractorWords).slice(
-    0,
-    availableDistractorSlots,
+function VersionMark({ floating = false }: { floating?: boolean }) {
+  return (
+    <div
+      className={`version-mark${floating ? " is-floating" : ""}`}
+      aria-label={`Versión ${GAME_VERSION}`}
+    >
+      <span>versión</span>
+      {GAME_VERSION}
+    </div>
   );
+}
 
-  const distractors = selectedDistractorWords.map((word, index) => ({
-      id: `wrong-${index}-${timestamp}`,
-      text: word,
-      correctZoneId: "wrong",
-    }));
+function GameLoading() {
+  return (
+    <div className="game-loading">
+      <VersionMark floating />
+      <div className="game-loading-blobs" aria-hidden="true">
+        <div className="blob blob-blue"></div>
+        <div className="blob blob-purple"></div>
+        <div className="blob blob-pink"></div>
+      </div>
 
-  return {
-    ok: true,
-    config: {
-      sentence,
-      zones,
-      items: shuffleArray([...correctItems, ...distractors]),
-    },
-  };
+      <div className="game-loading-content">
+        <div className="game-loading-brain">
+          <span>🧠</span>
+        </div>
+
+        <h1>Pensando en una explicación...</h1>
+        <p>Preparando tu desafío mental</p>
+
+        <div className="loading-dots" aria-hidden="true">
+          <i></i>
+          <i></i>
+          <i></i>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function formatTime(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  const remaining = seconds % 60;
+  return `${minutes}:${remaining.toString().padStart(2, "0")}`;
 }
 
 export default function App() {
@@ -154,6 +69,13 @@ export default function App() {
     null,
   );
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [result, setResult] = useState<RoundResult | null>(null);
+  const [pendingAnswers, setPendingAnswers] = useState<Record<
+    string,
+    string
+  > | null>(null);
+  const [continuing, setContinuing] = useState(false);
+  const loadedQuestionIdRef = useRef<string | null>(null);
 
   const notifyHostSkipped = useCallback(
     (questionId: string, questionText: string, reason: string) => {
@@ -171,46 +93,50 @@ export default function App() {
   );
 
   const handleReloadWords = useCallback(() => {
-    if (!currentQuestion) return;
-    const result = buildConfig(currentQuestion);
-    if (result.ok) {
+    if (!currentQuestion || result) return;
+    const next = buildConfig(currentQuestion);
+    if (next.ok) {
       setLoadError(null);
-      setCurrentConfig(result.config);
+      setResult(null);
+      setPendingAnswers(null);
+      setCurrentConfig(next.config);
     } else {
-      setLoadError(result.reason);
+      setLoadError(next.reason);
     }
-  }, [currentQuestion]);
+  }, [currentQuestion, result]);
 
   useEffect(() => {
-    const handleMessage = (
-      event: MessageEvent<{
-        currentQuestion: Question;
-        otherQuestions: Question[];
-      }>,
-    ) => {
-      console.log("Mensaje recibido del host:", event.data);
+    const handleMessage = (event: MessageEvent) => {
+      const data = event.data;
+      if (!data || typeof data !== "object") return;
 
-      const { currentQuestion } = event.data;
+      const incoming = (data as { currentQuestion?: Question }).currentQuestion;
+      if (!incoming?._id) return;
+      if (incoming._id === loadedQuestionIdRef.current) return;
 
-      if (!currentQuestion) return;
-      setCurrentQuestion(currentQuestion);
+      console.log("Mensaje recibido del host:", data);
+      loadedQuestionIdRef.current = incoming._id;
+      setCurrentQuestion(incoming);
       setTimeLeft(300);
       setLoadError(null);
+      setResult(null);
+      setPendingAnswers(null);
+      setContinuing(false);
 
       setGameData({
         timeLimit: 300,
         attempt: 1,
-        currentQuestionId: currentQuestion._id,
+        currentQuestionId: incoming._id,
       });
 
-      const result = buildConfig(currentQuestion);
-      if (!result.ok) {
+      const next = buildConfig(incoming);
+      if (!next.ok) {
         setCurrentConfig(null);
-        setLoadError(result.reason);
+        setLoadError(next.reason);
         return;
       }
 
-      setCurrentConfig(result.config);
+      setCurrentConfig(next.config);
     };
 
     window.addEventListener("message", handleMessage);
@@ -226,99 +152,118 @@ export default function App() {
     };
   }, []);
 
-  const handleNext = useCallback((userAnswers: Record<string, string>) => {
-    if (!currentConfig || !gameData) return;
+  const handleSettle = useCallback(
+    (userAnswers: Record<string, string>) => {
+      if (!currentConfig) return;
 
-    const isCorrect = currentConfig.items
-      .filter((item) => item.correctZoneId !== "wrong")
-      .every((item) => {
-        const selectedItemId = userAnswers[item.correctZoneId];
-        return selectedItemId === item.id;
+      const isCorrect = gradeAnswers(currentConfig, userAnswers);
+      const unfinished = Object.values(userAnswers).some((answer) => !answer);
+      const solution = solvedSentence(currentConfig);
+
+      setPendingAnswers(userAnswers);
+      setResult({
+        isCorrect,
+        title: isCorrect ? "¡Correcto!" : "Incorrecto",
+        message: isCorrect
+          ? "La frase quedó bien armada."
+          : unfinished
+            ? "Se acabó el tiempo."
+            : "Esta no era la frase.",
+        solution: isCorrect ? undefined : solution,
       });
+    },
+    [currentConfig],
+  );
 
+  const handleContinue = useCallback(() => {
+    if (!currentConfig || !gameData || !result || !pendingAnswers || continuing) {
+      return;
+    }
+
+    setContinuing(true);
     window.parent.postMessage(
       {
-        answeredCorrectly: isCorrect,
+        answeredCorrectly: result.isCorrect,
         questionId: gameData.currentQuestionId ?? "unknown",
         questionText: currentConfig.sentence,
-        userAnswer: JSON.stringify(userAnswers),
+        userAnswer: JSON.stringify(pendingAnswers),
       },
       "*",
     );
-  }, [currentConfig, gameData]);
+  }, [continuing, currentConfig, gameData, pendingAnswers, result]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
+    if (!currentConfig || result) return;
 
-          handleNext({});
-          return 0;
-        }
-        return prev - 1;
-      });
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => (prev <= 1 ? 0 : prev - 1));
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [gameData?.currentQuestionId, handleNext]);
+  }, [gameData?.currentQuestionId, currentConfig, result]);
 
   if (!gameData) {
-    return (
-      <div style={{ textAlign: "center", marginTop: 80 }}>
-        <h2>Esperando datos del host...</h2>
-      </div>
-    );
+    return <GameLoading />;
   }
 
   if (!currentConfig) {
     return (
-      <div style={{ textAlign: "center", marginTop: 80, padding: "0 24px" }}>
-        <h2>No se pudo cargar esta pregunta</h2>
-        <p style={{ color: "#666", marginTop: 12 }}>
-          {loadError ?? "No fue posible generar el juego con esta pregunta."}
-        </p>
-        <button
-          type="button"
-          style={{
-            marginTop: 24,
-            padding: "10px 20px",
-            borderRadius: 8,
-            border: "none",
-            background: "#2563eb",
-            color: "white",
-            cursor: "pointer",
-          }}
-          onClick={() =>
-            notifyHostSkipped(
-              gameData.currentQuestionId,
-              currentQuestion?.questionText ?? "unknown",
-              loadError ?? "unsupported question",
-            )
-          }
-        >
-          Continuar con la siguiente
-        </button>
+      <div className="game-shell">
+        <div className="game-top">
+          <p className="game-kicker">Orden de palabras</p>
+          <VersionMark />
+        </div>
+        <div className="status-card">
+          <p className="game-kicker">No se pudo armar</p>
+          <h2>Esta pregunta no entra en el juego</h2>
+          <p>
+            {loadError ?? "No fue posible generar el juego con esta pregunta."}
+          </p>
+          <button
+            type="button"
+            className="continue-button"
+            onClick={() =>
+              notifyHostSkipped(
+                gameData.currentQuestionId,
+                currentQuestion?.questionText ?? "unknown",
+                loadError ?? "unsupported question",
+              )
+            }
+          >
+            Continuar con la siguiente
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-6xl min-h-[85vh] bg-white rounded-2xl shadow-xl p-10 flex flex-col">
-        <h2 className="text-3xl font-bold text-center mb-2">
-          Completa la frase
-        </h2>
-        <p className="text-center text-gray-600 mb-6">
-          Arrastra cada palabra al espacio correcto para completar la frase.
-        </p>
-
-        <div className="flex justify-end mb-4">
+    <div className="game-shell">
+      <header className="game-top">
+        <div>
+          <p className="game-kicker">Orden de palabras</p>
+          <h1 className="game-title">Completa la frase</h1>
+          <p className="game-lead">
+            Arrastra cada palabra al espacio correcto para completar la frase.
+          </p>
+        </div>
+        <div className="game-actions">
+          <VersionMark />
+          <div
+            className={`timer-pill${timeLeft <= 30 ? " is-low" : ""}`}
+            role="timer"
+            aria-live="polite"
+            aria-label={`Tiempo restante ${formatTime(timeLeft)}`}
+          >
+            <span>Tiempo</span>
+            <strong>{formatTime(timeLeft)}</strong>
+          </div>
           <button
             type="button"
             onClick={handleReloadWords}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 transition-colors"
+            className="reload-button"
             aria-label="Cambiar palabras"
+            disabled={Boolean(result)}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -326,7 +271,9 @@ export default function App() {
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
-              className="w-4 h-4"
+              width="16"
+              height="16"
+              aria-hidden="true"
             >
               <path d="M3 12a9 9 0 0 1 15.3-6.3L21 8" />
               <path d="M21 3v5h-5" />
@@ -336,15 +283,16 @@ export default function App() {
             Cambiar palabras
           </button>
         </div>
+      </header>
 
-        <div className="flex-1 flex flex-col justify-center">
-          <DragDropGame
-            config={currentConfig}
-            onFinish={handleNext}
-            timeLeft={timeLeft}
-          />
-        </div>
-      </div>
+      <DragDropGame
+        config={currentConfig}
+        timeUp={timeLeft === 0}
+        result={result}
+        onSettle={handleSettle}
+        onContinue={handleContinue}
+        continuing={continuing}
+      />
     </div>
   );
 }

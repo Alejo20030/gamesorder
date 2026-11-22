@@ -23,8 +23,8 @@ export default function DragItemCard({ item, disabled }: Props) {
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`p-3 border rounded bg-white shadow ${
-        disabled ? "opacity-40 cursor-default" : "cursor-move"
+      className={`word-tile ${disabled ? "is-used" : ""} ${
+        transform ? "is-dragging" : ""
       }`}
       style={style}
     >
