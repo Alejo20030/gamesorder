@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildConfig,
+  cleantext,
   createSentenceWithBlanks,
   getKeywords,
   tokenize,
@@ -21,6 +22,23 @@ function makeQuestion(
     })),
   };
 }
+
+describe("cleantext", () => {
+  it("turns markdown into the words the player should see", () => {
+    const plain = cleantext(
+      "La **fotosíntesis** ocurre en las hojas\n\n![diagrama](https://cdn.example/a.png)",
+    );
+
+    expect(plain).toBe("La fotosíntesis ocurre en las hojas diagrama");
+    expect(plain).not.toContain("https://");
+    expect(plain).not.toContain("**");
+  });
+
+  it("keeps a bare URL, including underscores", () => {
+    const url = "https://github.com/BasicWolf/hexagonal_architecture_django";
+    expect(cleantext(url)).toBe(url);
+  });
+});
 
 describe("tokenize", () => {
   it("splits a normal sentence into words", () => {

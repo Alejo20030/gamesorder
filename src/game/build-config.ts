@@ -1,7 +1,9 @@
 import type { DragAndDropConfig } from "../interfaces/drag-and-drop-config.interface";
+import { markdownToPlainText } from "./markdown-to-plain-text";
 
 export interface Explanation {
   _id: string;
+  /** Markdown. Convert with markdownToPlainText before splitting into words. */
   explanationText: string;
   questionId?: string;
   createdBy?: string | null;
@@ -12,6 +14,7 @@ export interface Explanation {
 
 export interface Question {
   _id: string;
+  /** Markdown. This game uses the explanation sentence, converted to plain text. */
   questionText: string;
   explanations: Explanation[];
 }
@@ -25,7 +28,7 @@ export function shuffleArray<T>(array: T[]): T[] {
 }
 
 export function cleantext(text: string) {
-  return text.trim();
+  return markdownToPlainText(text);
 }
 
 /** Strip only leading/trailing punctuation so domains/URLs keep internal dots. */
